@@ -38,8 +38,9 @@ def merge_files(p: Path) -> pd.DataFrame:
 
     # Lendo o primeiro arquivo
     merged_data = generate_proper_format(files[0])
+    
     if merged_data[merged_data.columns[0]].empty:
-            fill_empty_columns(merged_data)
+        fill_empty_columns(merged_data)
 
     for file in files[1:]:
 
@@ -66,20 +67,34 @@ def add_country_col(df: pd.DataFrame) -> None:
     # Adicionando a coluna do país (bilateralização dos dados)
     df['País'] = [pais] * len(df)
 
-def rename_cols(df: pd.DataFrame) -> None:
+def rename_cols(df: pd.DataFrame, country_on: bool) -> None:
     """Altera o nome das colunas de queries para somente o termo correspondente na regex"""
     
     new_cols = []
 
-    for col in df.columns[1:-1]:
+    if(country_on):
 
-        try:
-            new_col = re.search(PADRAO, col, re.UNICODE).group(1)
-            new_cols.append(new_col)
-        except AttributeError as e:
-            print(f"Erro ao pesquisar a coluna {col}: {e}")
+        for col in df.columns[1:-1]:
+
+            try:
+                new_col = re.search(PADRAO, col, re.UNICODE).group(1)
+                new_cols.append(new_col)
+            except AttributeError as e:
+                print(f"Erro ao pesquisar a coluna {col}: {e}")
     
-    df.columns = ['Mês'] + new_cols + ['País']
+        df.columns = ['Mês'] + new_cols + ['País']
+    else:
+        for col in df.columns[1:]:
+
+            try:
+                new_col = re.search(PADRAO, col, re.UNICODE).group(1)
+                new_cols.append(new_col)
+            except AttributeError as e:
+                print(f"Erro ao pesquisar a coluna {col}: {e}")
+
+        print(new_cols)
+    
+        #df.columns = ['Mês'] + new_cols
 
 def main():
     parser = ArgumentParser()
@@ -99,7 +114,7 @@ def main():
     # Procurando por subpastas
     if not subfolders:
         data = merge_files(src_path)
-        add_country_col(data)
+        rename_cols(data, False)
         data.to_csv(filename, index=False)
     else:
 
@@ -108,7 +123,7 @@ def main():
         for folder in subfolders:
             data = merge_files(folder)
             add_country_col(data)
-            rename_cols(data)
+            rename_cols(data, True)
             dfs.append(data)
 
         result = pd.concat(dfs, ignore_index=True)
